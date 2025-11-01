@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,8 +49,8 @@ public class UserService {
     }
 
     public boolean isEmailTaken(String email) {
-        User user = userRepository.getByEmail(email);
-        return user != null;
+        Optional<User> user = userRepository.findByEmailOrPhone(email);
+        return user.isPresent();
     }
 
     public boolean isPhoneTaken(String phone) {
