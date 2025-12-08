@@ -15,9 +15,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
@@ -66,7 +68,9 @@ public class UserServiceTests {
                 "123451"
         );
 
-        when(userRepository.getByEmail("Email")).thenReturn(new User());
+        when(userRepository.findByEmailOrPhone(userCreateVO.email())).thenReturn(Optional.of(new User(userCreateVO)));
+        when(userRepository.getByPhone(userCreateVO.phone())).thenReturn(null);
+
 
         CustomException ex = assertThrows(
                 CustomException.class,
