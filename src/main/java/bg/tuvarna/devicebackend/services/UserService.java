@@ -1,7 +1,7 @@
 package bg.tuvarna.devicebackend.services;
 
-import bg.tuvarna.devicebackend.controllers.execptions.CustomException;
-import bg.tuvarna.devicebackend.controllers.execptions.ErrorCode;
+import bg.tuvarna.devicebackend.controllers.exceptions.CustomException;
+import bg.tuvarna.devicebackend.controllers.exceptions.ErrorCode;
 import bg.tuvarna.devicebackend.models.dtos.ChangePasswordVO;
 import bg.tuvarna.devicebackend.models.dtos.UserCreateVO;
 import bg.tuvarna.devicebackend.models.dtos.UserListing;
@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,7 +37,14 @@ public class UserService {
         User user = new User(userCreateVO);
 
         user.setPassword(passwordEncoder.encode(userCreateVO.password()));
-        user = userRepository.save(user);
+        user = userRepository.saveAndFlush(user);
+
+        if (
+                userCreateVO.deviceSerialNumber() == null || userCreateVO.deviceSerialNumber().isBlank()
+                || userCreateVO.purchaseDate() == null
+        ) {
+            return;
+        }
 
         try {
             deviceService.alreadyExist(userCreateVO.deviceSerialNumber());
@@ -48,8 +56,8 @@ public class UserService {
     }
 
     public boolean isEmailTaken(String email) {
-        User user = userRepository.getByEmail(email);
-        return user != null;
+        Optional<User> user = userRepository.findByEmailOrPhone(email);
+        return user.isPresent();
     }
 
     public boolean isPhoneTaken(String phone) {
@@ -96,11 +104,13 @@ public class UserService {
         return customPage;
     }
 
-    public void updateUser(UserUpdateVO userUpdateVO) {
-        User user = getUserById(userUpdateVO.id());
+    public User updateUser(Long id, UserUpdateVO userUpdateVO) {
+        User user = getUserById(id);
+
         if (user.getRole() == UserRole.ADMIN) {
             throw new CustomException("Admin password can't be changed", ErrorCode.Validation);
         }
+
         if (isEmailTaken(userUpdateVO.email()) && !user.getEmail().equals(userUpdateVO.email())) {
             throw new CustomException("Email already taken", ErrorCode.AlreadyExists);
         }
@@ -113,7 +123,8 @@ public class UserService {
         user.setAddress(userUpdateVO.address());
         user.setPhone(userUpdateVO.phone());
         user.setEmail(userUpdateVO.email());
-        userRepository.save(user);
+
+        return userRepository.save(user);
     }
 
     public void updatePassword(Long id, ChangePasswordVO passwordVO) {
